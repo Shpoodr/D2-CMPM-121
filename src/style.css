@@ -7,5 +7,21 @@
 canvas {
   border: 1px solid black;
   border-radius: 16px;
-  filter: drop-shadow(10px 10px 10px black);
+  box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.container {
+  max-width: 320px;
+  margin: 40px auto;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+.toolbar {
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
 }
