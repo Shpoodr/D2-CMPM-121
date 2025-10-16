@@ -12,6 +12,7 @@ document.body.innerHTML = `
   </div>
 `;
 
+const points: { x: number; y: number }[] = [];
 const clear = document.getElementById("clear") as HTMLButtonElement;
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d");
@@ -23,17 +24,32 @@ if (ctx === null) {
   throw new Error("Failed to get 2D context");
 }
 
+function drawingChanged() {
+  const event = new CustomEvent("drawingChanged", { detail: points });
+  canvas.dispatchEvent(event);
+}
+
 canvas.addEventListener("mousedown", (event) => {
   isDrawing = true;
+  const point = { x: event.offsetX, y: event.offsetY };
+  points.push(point);
+  drawingChanged();
   ctx.beginPath();
-  ctx.moveTo(event.offsetX, event.offsetY);
+  ctx.moveTo(point.x, point.y);
 });
 
 canvas.addEventListener("mousemove", (event) => {
   if (isDrawing) {
-    ctx.lineTo(event.offsetX, event.offsetY);
+    const point = { x: event.offsetX, y: event.offsetY };
+    points.push(point);
+    drawingChanged();
+    ctx.lineTo(point.x, point.y);
     ctx.stroke();
   }
+});
+canvas.addEventListener("drawingChanged", (e) => {
+  const event = e as CustomEvent<{ x: number; y: number }[]>;
+  console.log(event.detail);
 });
 canvas.addEventListener("mouseup", () => {
   isDrawing = false;
