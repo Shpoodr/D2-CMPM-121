@@ -2,6 +2,7 @@ import "./style.css";
 
 let isDrawing = false;
 
+//test
 document.body.innerHTML = `
   <h1>Random Title</h1>
   <div class="container">
