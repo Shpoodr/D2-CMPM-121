@@ -8,10 +8,15 @@ document.body.innerHTML = `
     <div class="toolbar">
       <button id="clear">Clear</button>
       <canvas id="canvas"></canvas>
+      <button id="undo">Undo</button>
+      <button id="redo">Redo</button>
     </div>
   </div>
 `;
 
+const undo = document.getElementById("undo") as HTMLButtonElement;
+const redo = document.getElementById("redo") as HTMLButtonElement;
+const redoStrokes: { x: number; y: number }[][] = [];
 const strokes: { x: number; y: number }[][] = [];
 const clear = document.getElementById("clear") as HTMLButtonElement;
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
@@ -28,7 +33,18 @@ function drawingChanged() {
   const event = new CustomEvent("drawingChanged", { detail: strokes });
   canvas.dispatchEvent(event);
 }
-
+undo.addEventListener("click", () => {
+  if (strokes.length > 0) {
+    redoStrokes.push(strokes.pop()!);
+    drawingChanged();
+  }
+});
+redo.addEventListener("click", () => {
+  if (redoStrokes.length > 0) {
+    strokes.push(redoStrokes.pop()!);
+    drawingChanged();
+  }
+});
 function redraw() {
   ctx?.clearRect(0, 0, canvas.width, canvas.height);
   for (const stroke of strokes) {
