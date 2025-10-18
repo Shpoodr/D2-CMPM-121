@@ -2,6 +2,26 @@ import "./style.css";
 
 let isDrawing = false;
 
+//class setup
+class lineCommand {
+  private points: { x: number; y: number }[] = [];
+  constructor(x: number, y: number) {
+    this.points.push({ x, y });
+  }
+  drag(x: number, y: number) {
+    this.points.push({ x, y });
+  }
+  display(ctx: CanvasRenderingContext2D) {
+    if (this.points.length === 0) return;
+    ctx.beginPath();
+    ctx.moveTo(this.points[0]!.x, this.points[0]!.y);
+    for (const point of this.points.slice(1)) {
+      ctx.lineTo(point.x, point.y);
+    }
+    ctx.stroke();
+  }
+}
+
 //test
 document.body.innerHTML = `
   <h1>Random Title</h1>
@@ -17,8 +37,8 @@ document.body.innerHTML = `
 
 const undo = document.getElementById("undo") as HTMLButtonElement;
 const redo = document.getElementById("redo") as HTMLButtonElement;
-const redoStrokes: { x: number; y: number }[][] = [];
-const strokes: { x: number; y: number }[][] = [];
+const redoStrokes: lineCommand[] = [];
+const strokes: lineCommand[] = [];
 const clear = document.getElementById("clear") as HTMLButtonElement;
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d");
@@ -48,34 +68,27 @@ redo.addEventListener("click", () => {
 });
 function redraw() {
   ctx?.clearRect(0, 0, canvas.width, canvas.height);
-  for (const stroke of strokes) {
-    if (stroke.length === 0) continue;
-    ctx?.beginPath();
-    ctx?.moveTo(stroke[0]!.x, stroke[0]!.y);
-    for (const point of stroke.slice(1)) {
-      ctx?.lineTo(point.x, point.y);
-    }
-    ctx?.stroke();
+  for (const command of strokes) {
+    command.display(ctx!);
   }
 }
 
 canvas.addEventListener("mousedown", (event) => {
   isDrawing = true;
-  strokes.push([{ x: event.offsetX, y: event.offsetY }]);
+  const newStroke = new lineCommand(event.offsetX, event.offsetY);
+  strokes.push(newStroke);
   drawingChanged();
 });
 
 canvas.addEventListener("mousemove", (event) => {
   if (isDrawing) {
     const currentStroke = strokes[strokes.length - 1];
-    currentStroke?.push({ x: event.offsetX, y: event.offsetY });
+    currentStroke?.drag(event.offsetX, event.offsetY);
     drawingChanged();
   }
 });
-canvas.addEventListener("drawingChanged", (e) => {
+canvas.addEventListener("drawingChanged", () => {
   redraw();
-  const event = e as CustomEvent<{ x: number; y: number }[]>;
-  console.log(event.detail);
 });
 canvas.addEventListener("mouseup", () => {
   isDrawing = false;
