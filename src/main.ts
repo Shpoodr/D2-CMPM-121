@@ -6,8 +6,12 @@ interface Command {
   draw(ctx: CanvasRenderingContext2D): void;
 }
 
+interface DrawableCommand extends Command {
+  drag(x: number, y: number): void;
+}
+
 //class setup
-class lineCommand {
+class lineCommand implements DrawableCommand {
   private points: { x: number; y: number }[] = [];
   private lineWidth: number;
   constructor(x: number, y: number, lineWidth: number) {
@@ -46,6 +50,32 @@ class ToolPreviewCommand implements Command {
   }
 }
 
+class StickerPreviewCommand implements Command {
+  constructor(private x: number, private y: number, private sticker: string) {}
+  draw(ctx: CanvasRenderingContext2D): void {
+    ctx.font = "24px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.globalAlpha = 0.5;
+    ctx.fillText(this.sticker, this.x, this.y);
+    ctx.globalAlpha = 1.0;
+  }
+}
+
+class DrawStickerCommand implements DrawableCommand {
+  constructor(private x: number, private y: number, private sticker: string) {}
+  drag(x: number, y: number) {
+    this.x = x;
+    this.y = y;
+  }
+  draw(ctx: CanvasRenderingContext2D) {
+    ctx.font = "24px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText(this.sticker, this.x, this.y);
+  }
+}
+//html stuff
 document.body.innerHTML = `
   <h1>Random Title</h1>
   <div class="container">
@@ -54,30 +84,41 @@ document.body.innerHTML = `
       <button id="undo" class="actionButton">Undo</button>
       <button id="redo" class="actionButton">Redo</button>
 
-      <button id="regButton" class="thicknessButton">Regular</button>
-      <button id="ThinButton" class="thicknessButton">Thin</button>
-      <button id="ThickButton" class="thicknessButton">Thick</button>
+      <button id="regButton" class="thicknessButton" data-width="3">Regular</button>
+      <button id="ThinButton" class="thicknessButton" data-width="1.5">Thin</button>
+      <button id="ThickButton" class="thicknessButton" data-width="5.5">Thick</button>
+    </div>
+    <div class="emoji-section">
+      <button class="stickerButton" data-sticker="😀">😀</button>
+      <button class="stickerButton" data-sticker="⭐">⭐</button>
+      <button class="stickerButton" data-sticker="❤️">❤️</button>
     </div>
     <canvas id="canvas"></canvas>
   </div>
 `;
 
+//buttons
 const clear = document.getElementById("clear") as HTMLButtonElement;
 const undo = document.getElementById("undo") as HTMLButtonElement;
 const redo = document.getElementById("redo") as HTMLButtonElement;
-const regLine = document.getElementById("regButton") as HTMLButtonElement;
-const thinLine = document.getElementById("ThinButton") as HTMLButtonElement;
-const thickLine = document.getElementById("ThickButton") as HTMLButtonElement;
+const allThicknessButtons = document.querySelectorAll(".thicknessButton");
+const stickerButtons = document.querySelectorAll(".stickerButton");
 
-const redoStrokes: lineCommand[] = [];
-const strokes: lineCommand[] = [];
+//arrays of lines
+const redoStrokes: DrawableCommand[] = [];
+const strokes: DrawableCommand[] = [];
 
-let toolPreview: ToolPreviewCommand | null = null;
-
-const canvas = document.getElementById("canvas") as HTMLCanvasElement;
-const ctx = canvas.getContext("2d");
+//state Variables
+let currentTool = "marker";
+let currentSticker = "😀";
 let currentLineWidth = 3;
 
+//tools
+let toolPreview: Command | null = null;
+
+//canvas setup
+const canvas = document.getElementById("canvas") as HTMLCanvasElement;
+const ctx = canvas.getContext("2d");
 canvas.width = 320;
 canvas.height = 320;
 
@@ -85,42 +126,9 @@ if (ctx === null) {
   throw new Error("Failed to get 2D context");
 }
 
-function drawingChanged() {
-  redraw();
-}
-undo.addEventListener("click", () => {
-  if (strokes.length > 0) {
-    redoStrokes.push(strokes.pop()!);
-    drawingChanged();
-  }
-});
-redo.addEventListener("click", () => {
-  if (redoStrokes.length > 0) {
-    strokes.push(redoStrokes.pop()!);
-    drawingChanged();
-  }
-});
-regLine.addEventListener("click", () => {
-  currentLineWidth = 3;
-  regLine.classList.add("active");
-  thinLine.classList.remove("active");
-  thickLine.classList.remove("active");
-});
-thinLine.addEventListener("click", () => {
-  currentLineWidth = 1.5;
-  thinLine.classList.add("active");
-  thickLine.classList.remove("active");
-  regLine.classList.remove("active");
-});
-
-thickLine.addEventListener("click", () => {
-  currentLineWidth = 5.5;
-  thickLine.classList.add("active");
-  thinLine.classList.remove("active");
-  regLine.classList.remove("active");
-});
 function redraw() {
   ctx?.clearRect(0, 0, canvas.width, canvas.height);
+  if (!ctx) return;
   for (const command of strokes) {
     command.draw(ctx!);
   }
@@ -129,38 +137,86 @@ function redraw() {
   }
 }
 
+stickerButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    currentTool = "sticker";
+    currentSticker = button.getAttribute("data-sticker") || "😀";
+  });
+});
+
+allThicknessButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const clickedButton = button as HTMLButtonElement;
+    const width = clickedButton.dataset.width;
+    if (!width) return;
+    currentLineWidth = parseFloat(width);
+    currentTool = "marker";
+    allThicknessButtons.forEach((btn) => btn.classList.remove("active"));
+    clickedButton.classList.add("active");
+  });
+});
+
+undo.addEventListener("click", () => {
+  if (strokes.length > 0) {
+    redoStrokes.push(strokes.pop()!);
+    redraw();
+  }
+});
+redo.addEventListener("click", () => {
+  if (redoStrokes.length > 0) {
+    strokes.push(redoStrokes.pop()!);
+    redraw();
+  }
+});
+
 canvas.addEventListener("mousedown", (event) => {
   isDrawing = true;
   toolPreview = null;
-  const newStroke = new lineCommand(
-    event.offsetX,
-    event.offsetY,
-    currentLineWidth,
-  );
-  strokes.push(newStroke);
-  drawingChanged();
-});
 
-canvas.addEventListener("mousemove", (event) => {
-  if (isDrawing) {
-    const currentStroke = strokes[strokes.length - 1];
-    currentStroke?.drag(event.offsetX, event.offsetY);
-    drawingChanged();
-  } else {
-    toolPreview = new ToolPreviewCommand(
+  let newCommand: DrawableCommand;
+
+  if (currentTool === "marker") {
+    newCommand = new lineCommand(
       event.offsetX,
       event.offsetY,
       currentLineWidth,
     );
-    drawingChanged();
+  } else {
+    newCommand = new DrawStickerCommand(
+      event.offsetX,
+      event.offsetY,
+      currentSticker,
+    );
+  }
+  strokes.push(newCommand);
+  redraw();
+});
+
+canvas.addEventListener("mousemove", (event) => {
+  if (isDrawing) {
+    const currentCommand = strokes[strokes.length - 1];
+    currentCommand?.drag(event.offsetX, event.offsetY);
+    redraw();
+  } else {
+    if (currentTool === "marker") {
+      toolPreview = new ToolPreviewCommand(
+        event.offsetX,
+        event.offsetY,
+        currentLineWidth,
+      );
+    } else {
+      toolPreview = new StickerPreviewCommand(
+        event.offsetX,
+        event.offsetY,
+        currentSticker,
+      );
+    }
+    redraw();
   }
 });
 
 canvas.addEventListener("mouseleave", () => {
   toolPreview = null;
-  drawingChanged();
-});
-canvas.addEventListener("drawingChanged", () => {
   redraw();
 });
 canvas.addEventListener("mouseup", () => {
@@ -168,5 +224,5 @@ canvas.addEventListener("mouseup", () => {
 });
 clear.addEventListener("click", () => {
   strokes.length = 0;
-  drawingChanged();
+  redraw();
 });
