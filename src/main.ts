@@ -2,6 +2,10 @@ import "./style.css";
 
 let isDrawing = false;
 
+interface Command {
+  draw(ctx: CanvasRenderingContext2D): void;
+}
+
 //class setup
 class lineCommand {
   private points: { x: number; y: number }[] = [];
@@ -13,9 +17,11 @@ class lineCommand {
   drag(x: number, y: number) {
     this.points.push({ x, y });
   }
-  display(ctx: CanvasRenderingContext2D) {
+  draw(ctx: CanvasRenderingContext2D) {
     if (this.points.length === 0) return;
     ctx.lineWidth = this.lineWidth;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
     ctx.beginPath();
     ctx.moveTo(this.points[0]!.x, this.points[0]!.y);
     for (const point of this.points.slice(1)) {
@@ -25,7 +31,21 @@ class lineCommand {
   }
 }
 
-//test
+class ToolPreviewCommand implements Command {
+  constructor(
+    private x: number,
+    private y: number,
+    private lineWidth: number,
+  ) {}
+  draw(ctx: CanvasRenderingContext2D): void {
+    ctx.lineWidth = this.lineWidth;
+    ctx.strokeStyle = "gray";
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.lineWidth / 2, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
 document.body.innerHTML = `
   <h1>Random Title</h1>
   <div class="container">
@@ -48,8 +68,12 @@ const redo = document.getElementById("redo") as HTMLButtonElement;
 const regLine = document.getElementById("regButton") as HTMLButtonElement;
 const thinLine = document.getElementById("ThinButton") as HTMLButtonElement;
 const thickLine = document.getElementById("ThickButton") as HTMLButtonElement;
+
 const redoStrokes: lineCommand[] = [];
 const strokes: lineCommand[] = [];
+
+let toolPreview: ToolPreviewCommand | null = null;
+
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d");
 let currentLineWidth = 3;
@@ -62,8 +86,7 @@ if (ctx === null) {
 }
 
 function drawingChanged() {
-  const event = new CustomEvent("drawingChanged", { detail: strokes });
-  canvas.dispatchEvent(event);
+  redraw();
 }
 undo.addEventListener("click", () => {
   if (strokes.length > 0) {
@@ -99,12 +122,16 @@ thickLine.addEventListener("click", () => {
 function redraw() {
   ctx?.clearRect(0, 0, canvas.width, canvas.height);
   for (const command of strokes) {
-    command.display(ctx!);
+    command.draw(ctx!);
+  }
+  if (toolPreview) {
+    toolPreview.draw(ctx!);
   }
 }
 
 canvas.addEventListener("mousedown", (event) => {
   isDrawing = true;
+  toolPreview = null;
   const newStroke = new lineCommand(
     event.offsetX,
     event.offsetY,
@@ -119,7 +146,19 @@ canvas.addEventListener("mousemove", (event) => {
     const currentStroke = strokes[strokes.length - 1];
     currentStroke?.drag(event.offsetX, event.offsetY);
     drawingChanged();
+  } else {
+    toolPreview = new ToolPreviewCommand(
+      event.offsetX,
+      event.offsetY,
+      currentLineWidth,
+    );
+    drawingChanged();
   }
+});
+
+canvas.addEventListener("mouseleave", () => {
+  toolPreview = null;
+  drawingChanged();
 });
 canvas.addEventListener("drawingChanged", () => {
   redraw();
