@@ -175,7 +175,7 @@ allThicknessButtons.forEach((button) => {
 addStickerButton.addEventListener("click", () => {
   const newSticker = prompt("Enter a new Sticker:", "😀");
   if (newSticker) {
-    const stickerChar = newSticker.slice(0, 1);
+    const stickerChar = newSticker;
     const newButton = addStickerButtonFunc(stickerChar);
     newButton.click();
   }
