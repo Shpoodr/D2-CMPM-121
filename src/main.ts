@@ -96,6 +96,7 @@ document.body.innerHTML = `
       <button id="addSticker" class="actionButton">+</button>
     </div>
     <canvas id="canvas"></canvas>
+    <button id="exportButton">Export</button>
   </div>
 `;
 
@@ -107,6 +108,9 @@ const allThicknessButtons = document.querySelectorAll(".thicknessButton");
 const emojiSection = document.querySelector(".emoji-section") as HTMLDivElement;
 const addStickerButton = document.getElementById(
   "addSticker",
+) as HTMLButtonElement;
+const exportButton = document.getElementById(
+  "exportButton",
 ) as HTMLButtonElement;
 
 //arrays of lines
@@ -170,6 +174,29 @@ allThicknessButtons.forEach((button) => {
     allThicknessButtons.forEach((btn) => btn.classList.remove("active"));
     clickedButton.classList.add("active");
   });
+});
+
+exportButton.addEventListener("click", () => {
+  const exportCanvas = document.createElement("canvas");
+  exportCanvas.width = 1024;
+  exportCanvas.height = 1024;
+  const exportCtx = exportCanvas.getContext("2d");
+  if (!exportCtx) return;
+
+  const scaleFactor = exportCanvas.width / canvas.width;
+  exportCtx.scale(scaleFactor, scaleFactor);
+
+  for (const command of strokes) {
+    command.draw(exportCtx);
+  }
+
+  const imageUrl = exportCanvas.toDataURL("image/png");
+  const link = document.createElement("a");
+  link.href = imageUrl;
+  link.download = "my-drawing.png";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 });
 
 addStickerButton.addEventListener("click", () => {
