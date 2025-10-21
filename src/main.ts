@@ -1,7 +1,5 @@
 import "./style.css";
 
-let isDrawing = false;
-
 interface Command {
   draw(ctx: CanvasRenderingContext2D): void;
 }
@@ -9,6 +7,10 @@ interface Command {
 interface DrawableCommand extends Command {
   drag(x: number, y: number): void;
 }
+
+const stickerData = '["😀", "⭐", "❤️"]';
+const availableStickers: string[] = JSON.parse(stickerData);
+let isDrawing = false;
 
 //class setup
 class lineCommand implements DrawableCommand {
@@ -53,7 +55,8 @@ class ToolPreviewCommand implements Command {
 class StickerPreviewCommand implements Command {
   constructor(private x: number, private y: number, private sticker: string) {}
   draw(ctx: CanvasRenderingContext2D): void {
-    ctx.font = "24px sans-serif";
+    ctx.font =
+      "24px 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.globalAlpha = 0.5;
@@ -69,7 +72,8 @@ class DrawStickerCommand implements DrawableCommand {
     this.y = y;
   }
   draw(ctx: CanvasRenderingContext2D) {
-    ctx.font = "24px sans-serif";
+    ctx.font =
+      "24px 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillText(this.sticker, this.x, this.y);
@@ -89,20 +93,21 @@ document.body.innerHTML = `
       <button id="ThickButton" class="thicknessButton" data-width="5.5">Thick</button>
     </div>
     <div class="emoji-section">
-      <button class="stickerButton" data-sticker="😀">😀</button>
-      <button class="stickerButton" data-sticker="⭐">⭐</button>
-      <button class="stickerButton" data-sticker="❤️">❤️</button>
+      <button id="addSticker" class="actionButton">+</button>
     </div>
     <canvas id="canvas"></canvas>
   </div>
 `;
 
-//buttons
+//buttons / Elements
 const clear = document.getElementById("clear") as HTMLButtonElement;
 const undo = document.getElementById("undo") as HTMLButtonElement;
 const redo = document.getElementById("redo") as HTMLButtonElement;
 const allThicknessButtons = document.querySelectorAll(".thicknessButton");
-const stickerButtons = document.querySelectorAll(".stickerButton");
+const emojiSection = document.querySelector(".emoji-section") as HTMLDivElement;
+const addStickerButton = document.getElementById(
+  "addSticker",
+) as HTMLButtonElement;
 
 //arrays of lines
 const redoStrokes: DrawableCommand[] = [];
@@ -112,8 +117,6 @@ const strokes: DrawableCommand[] = [];
 let currentTool = "marker";
 let currentSticker = "😀";
 let currentLineWidth = 3;
-
-//tools
 let toolPreview: Command | null = null;
 
 //canvas setup
@@ -121,6 +124,26 @@ const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d");
 canvas.width = 320;
 canvas.height = 320;
+
+function addStickerButtonFunc(sticker: string) {
+  const button = document.createElement("button");
+  button.className = "stickerButton";
+  button.dataset.sticker = sticker;
+  button.textContent = sticker;
+
+  button.addEventListener("click", () => {
+    currentTool = "sticker";
+    currentSticker = sticker;
+
+    document.querySelectorAll(".stickerButton, .thicknessButton")
+      .forEach((btn) => btn.classList.remove("active"));
+    button.classList.add("active");
+  });
+  emojiSection.appendChild(button);
+  return button;
+}
+
+availableStickers.forEach(addStickerButtonFunc);
 
 if (ctx === null) {
   throw new Error("Failed to get 2D context");
@@ -137,13 +160,6 @@ function redraw() {
   }
 }
 
-stickerButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    currentTool = "sticker";
-    currentSticker = button.getAttribute("data-sticker") || "😀";
-  });
-});
-
 allThicknessButtons.forEach((button) => {
   button.addEventListener("click", () => {
     const clickedButton = button as HTMLButtonElement;
@@ -156,6 +172,14 @@ allThicknessButtons.forEach((button) => {
   });
 });
 
+addStickerButton.addEventListener("click", () => {
+  const newSticker = prompt("Enter a new Sticker:", "😀");
+  if (newSticker) {
+    const stickerChar = newSticker.slice(0, 1);
+    const newButton = addStickerButtonFunc(stickerChar);
+    newButton.click();
+  }
+});
 undo.addEventListener("click", () => {
   if (strokes.length > 0) {
     redoStrokes.push(strokes.pop()!);
