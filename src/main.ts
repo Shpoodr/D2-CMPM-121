@@ -85,7 +85,7 @@ class DrawStickerCommand implements DrawableCommand {
 }
 //html stuff
 document.body.innerHTML = `
-  <h1>Random Title</h1>
+  <h1>Random Drawing Tool</h1>
   <div class="container">
     <div class="toolbar">
       <button id="clear" class="actionButton">Clear</button>
@@ -184,8 +184,16 @@ allThicknessButtons.forEach((button) => {
     currentTool = "marker";
     currentStrokeColor = getRandomColor();
 
-    allThicknessButtons.forEach((btn) => btn.classList.remove("active"));
+    document.querySelectorAll(".stickerButton, .thicknessButton")
+      .forEach((btn) => {
+        btn.classList.remove("active");
+        (btn as HTMLElement).style.backgroundColor = "";
+        (btn as HTMLElement).style.color = "";
+      });
+
     clickedButton.classList.add("active");
+    clickedButton.style.backgroundColor = currentStrokeColor;
+    clickedButton.style.color = "white";
   });
 });
 
