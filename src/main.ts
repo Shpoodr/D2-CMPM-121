@@ -16,9 +16,11 @@ let isDrawing = false;
 class lineCommand implements DrawableCommand {
   private points: { x: number; y: number }[] = [];
   private lineWidth: number;
-  constructor(x: number, y: number, lineWidth: number) {
+  private color: string;
+  constructor(x: number, y: number, lineWidth: number, color: string) {
     this.points.push({ x, y });
     this.lineWidth = lineWidth;
+    this.color = color;
   }
   drag(x: number, y: number) {
     this.points.push({ x, y });
@@ -26,6 +28,7 @@ class lineCommand implements DrawableCommand {
   draw(ctx: CanvasRenderingContext2D) {
     if (this.points.length === 0) return;
     ctx.lineWidth = this.lineWidth;
+    ctx.strokeStyle = this.color;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.beginPath();
@@ -34,6 +37,7 @@ class lineCommand implements DrawableCommand {
       ctx.lineTo(point.x, point.y);
     }
     ctx.stroke();
+    ctx.strokeStyle = "black";
   }
 }
 
@@ -122,6 +126,7 @@ let currentTool = "marker";
 let currentSticker = "😀";
 let currentLineWidth = 3;
 let toolPreview: Command | null = null;
+let currentStrokeColor: string = "black";
 
 //canvas setup
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
@@ -164,13 +169,21 @@ function redraw() {
   }
 }
 
+function getRandomColor(): string {
+  const hue = Math.floor(Math.random() * 360);
+  return `hsl(${hue}, 100%, 50%)`;
+}
+
 allThicknessButtons.forEach((button) => {
   button.addEventListener("click", () => {
     const clickedButton = button as HTMLButtonElement;
     const width = clickedButton.dataset.width;
     if (!width) return;
+
     currentLineWidth = parseFloat(width);
     currentTool = "marker";
+    currentStrokeColor = getRandomColor();
+
     allThicknessButtons.forEach((btn) => btn.classList.remove("active"));
     clickedButton.classList.add("active");
   });
@@ -231,6 +244,7 @@ canvas.addEventListener("mousedown", (event) => {
       event.offsetX,
       event.offsetY,
       currentLineWidth,
+      currentStrokeColor,
     );
   } else {
     newCommand = new DrawStickerCommand(
